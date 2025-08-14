@@ -1,18 +1,33 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>Webcam Capture App</title>
-  <style>
-    body { font-family: Arial, sans-serif; padding: 20px; }
-    form { display: flex; gap: 8px; }
-    input, button { padding: 8px; }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Enter Name</title>
+<style>
+body { font-family: Arial, sans-serif; padding: 30px; background: #f9f9f9; }
+input, button { padding: 10px; font-size: 16px; margin: 5px 0; }
+#output { margin-top: 20px; }
+</style>
 </head>
 <body>
-  <h1>Generate Camera Capture Link</h1>
-  <form action="/generate-link" method="POST">
-    <input type="text" name="userName" placeholder="Enter name" required>
-    <button type="submit">Generate Link</button>
-  </form>
+<h2>Enter Your Name</h2>
+<input type="text" id="name" placeholder="Enter name" />
+<button onclick="generateLink()">Generate Link</button>
+
+<div id="output"></div>
+
+<script>
+function generateLink() {
+    const name = document.getElementById("name").value.trim();
+    if (!name) return alert("Please enter a name!");
+
+    const link = `${window.location.origin}/capture?name=${encodeURIComponent(name)}`;
+    document.getElementById("output").innerHTML = `
+        <p><strong>Name:</strong> ${name}</p>
+        <p><strong>Shareable Link:</strong> <a href="${link}" target="_blank">${link}</a></p>
+    `;
+}
+</script>
 </body>
 </html>
