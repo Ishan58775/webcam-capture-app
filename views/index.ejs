@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Webcam Capture App</title>
+  <style>
+    body { font-family: Arial, sans-serif; padding: 20px; }
+    form { display: flex; gap: 8px; }
+    input, button { padding: 8px; }
+  </style>
+</head>
+<body>
+  <h1>Generate Camera Capture Link</h1>
+  <form action="/generate-link" method="POST">
+    <input type="text" name="userName" placeholder="Enter name" required>
+    <button type="submit">Generate Link</button>
+  </form>
+</body>
+</html>
