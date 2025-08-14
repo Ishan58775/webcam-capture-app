@@ -29,10 +29,11 @@ app.post("/upload", (req, res) => {
 });
 
 // Admin panel placeholder
-app.get("/admin", (req, res) => {
+app.get("/admin/panel", (req, res) => {
     const files = fs.readdirSync(path.join(__dirname, "uploads"));
-    res.render("admin", { files });
+    res.render("admin", { files });  // <-- match your admin.ejs file
 });
+
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
