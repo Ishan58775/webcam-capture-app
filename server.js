@@ -23,34 +23,50 @@ app.use(session({
 let sessions = {}; 
 // sessions = { sessionId: { userName, timestamp, accessed, images: [] } }
 
+// Rebuild sessions from existing uploads on server start
+const uploadsPath = path.join(__dirname, "uploads");
+if (fs.existsSync(uploadsPath)) {
+    const allSessions = fs.readdirSync(uploadsPath);
+    allSessions.forEach(sessionId => {
+        const folder = path.join(uploadsPath, sessionId);
+        const metaFile = path.join(folder, "meta.json");
+        if (fs.existsSync(metaFile)) {
+            const meta = JSON.parse(fs.readFileSync(metaFile, "utf-8"));
+            const images = fs.readdirSync(folder).filter(f => f.endsWith(".jpg"));
+            sessions[sessionId] = { ...meta, images };
+        }
+    });
+}
+
 // Home page
 app.get("/", (req, res) => res.render("index"));
 
 // Capture page
 app.get("/capture", (req, res) => res.render("capture"));
 
-// Upload route (now stores in sessionId)
+// Upload route
 app.post("/upload", (req, res) => {
     const { image, name, type, sessionId } = req.body;
     if (!image || !name || !type || !sessionId) return res.sendStatus(400);
 
-    const base64Data = image.replace(/^data:image\/jpeg;base64,/, "");
     const sessionFolder = path.join(__dirname, "uploads", sessionId);
-
     if (!fs.existsSync(sessionFolder)) fs.mkdirSync(sessionFolder, { recursive: true });
 
     const filename = `${type}_${Date.now()}.jpg`;
+    const base64Data = image.replace(/^data:image\/jpeg;base64,/, "");
     fs.writeFileSync(path.join(sessionFolder, filename), base64Data, "base64");
 
     // Store in memory
-if (!sessions[sessionId]) {
-    sessions[sessionId] = {
-        userName: name, // <-- use the name from front-end
-        timestamp: new Date().toLocaleString("en-IN", { timeZone: "Asia/Kolkata" }),
-        accessed: false,
-        images: []
-    };
-}
+    const metaFile = path.join(sessionFolder, "meta.json");
+    if (!sessions[sessionId]) {
+        const meta = {
+            userName: name,
+            timestamp: new Date().toLocaleString("en-IN", { timeZone: "Asia/Kolkata" }),
+            accessed: false
+        };
+        fs.writeFileSync(metaFile, JSON.stringify(meta, null, 2));
+        sessions[sessionId] = { ...meta, images: [] };
+    }
 
     sessions[sessionId].images.push(filename);
 
