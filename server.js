@@ -5,22 +5,25 @@ const bodyParser = require("body-parser");
 const session = require("express-session");
 
 const app = express();
+
+// Middleware
 app.use(bodyParser.json({ limit: "10mb" }));
 app.use(bodyParser.urlencoded({ extended: true }));
-
 app.set("view engine", "ejs");
+
+// Static files
 app.use(express.static("public"));
 app.use("/uploads", express.static(path.join(__dirname, "uploads"))); // make uploads public
 
-// Admin session
+// Session for admin login
 app.use(session({
     secret: "super-secret-key",
     resave: false,
     saveUninitialized: true
 }));
 
-// In-memory session data
-let sessions = {}; // { id: { userName, timestamp, accessed, images: [] } }
+// Store captured sessions
+let sessions = {}; // { sessionId: { userName, timestamp, accessed, images: [] } }
 
 // Home page
 app.get("/", (req, res) => res.render("index"));
@@ -30,21 +33,15 @@ app.get("/capture", (req, res) => res.render("capture"));
 
 // Upload route
 app.post("/upload", (req, res) => {
-    const { image, name, type } = req.body;
-    if (!image || !name || !type) return res.sendStatus(400);
+    const { image, name, type, sessionId } = req.body;
+    if (!image || !name || !type || !sessionId) return res.sendStatus(400);
 
     const base64Data = image.replace(/^data:image\/jpeg;base64,/, "");
-    const filename = `${name}_${type}_${Date.now()}.jpg`;
-    const uploadPath = path.join(__dirname, "uploads");
-    if (!fs.existsSync(uploadPath)) fs.mkdirSync(uploadPath);
+    const uploadDir = path.join(__dirname, "uploads", sessionId);
+    if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
 
-    fs.writeFileSync(path.join(uploadPath, filename), base64Data, "base64");
-    res.sendStatus(200);
-});
-
-// serve uploads folder
-app.use("/uploads", express.static(path.join(__dirname, "uploads")));
-
+    const filename = `${type}_${Date.now()}.jpg`;
+    fs.writeFileSync(path.join(uploadDir, filename), base64Data, "base64");
 
     if (!sessions[sessionId]) {
         sessions[sessionId] = {
