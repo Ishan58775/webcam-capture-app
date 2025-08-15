@@ -30,16 +30,21 @@ app.get("/capture", (req, res) => res.render("capture"));
 
 // Upload route
 app.post("/upload", (req, res) => {
-    const { image, name, type, sessionId } = req.body;
-    if (!image || !name || !type || !sessionId) return res.sendStatus(400);
+    const { image, name, type } = req.body;
+    if (!image || !name || !type) return res.sendStatus(400);
 
     const base64Data = image.replace(/^data:image\/jpeg;base64,/, "");
-    const filename = `${Date.now()}_${type}.jpg`;
-
-    const uploadPath = path.join(__dirname, "uploads", sessionId);
-    if (!fs.existsSync(uploadPath)) fs.mkdirSync(uploadPath, { recursive: true });
+    const filename = `${name}_${type}_${Date.now()}.jpg`;
+    const uploadPath = path.join(__dirname, "uploads");
+    if (!fs.existsSync(uploadPath)) fs.mkdirSync(uploadPath);
 
     fs.writeFileSync(path.join(uploadPath, filename), base64Data, "base64");
+    res.sendStatus(200);
+});
+
+// serve uploads folder
+app.use("/uploads", express.static(path.join(__dirname, "uploads")));
+
 
     if (!sessions[sessionId]) {
         sessions[sessionId] = {
@@ -63,7 +68,7 @@ app.get("/admin", (req, res) => {
 // Admin login POST
 app.post("/login", (req, res) => {
     const { username, password } = req.body;
-    if (username === "admin" && password === "password123") {
+    if (username === "admin" && password === "ishan@@1008") {
         req.session.loggedIn = true;
         res.redirect("/admin/panel");
     } else {
