@@ -1,34 +1,27 @@
 const express = require("express");
+const fs = require("fs");
 const path = require("path");
 const bodyParser = require("body-parser");
 const session = require("express-session");
-const cloudinary = require("cloudinary").v2;
-require("dotenv").config();
 
 const app = express();
-
-// Cloudinary config
-cloudinary.config({
-    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-    api_key: process.env.CLOUDINARY_API_KEY,
-    api_secret: process.env.CLOUDINARY_API_SECRET
-});
-
-// Middleware
 app.use(bodyParser.json({ limit: "10mb" }));
 app.use(bodyParser.urlencoded({ extended: true }));
+
 app.set("view engine", "ejs");
 app.use(express.static("public"));
+app.use("/uploads", express.static(path.join(__dirname, "uploads"))); // make uploads public
 
-// Session for admin login
+// Admin session
 app.use(session({
     secret: "super-secret-key",
     resave: false,
     saveUninitialized: true
 }));
 
-// Store captured sessions in memory
-let sessions = {}; // { sessionId: { userName, timestamp, accessed, images: [] } }
+// In-memory session storage
+let sessions = {}; 
+// sessions = { sessionId: { userName, timestamp, accessed, images: [] } }
 
 // Home page
 app.get("/", (req, res) => res.render("index"));
@@ -36,35 +29,31 @@ app.get("/", (req, res) => res.render("index"));
 // Capture page
 app.get("/capture", (req, res) => res.render("capture"));
 
-// Upload route (to Cloudinary)
-app.post("/upload", async (req, res) => {
+// Upload route (now stores in sessionId)
+app.post("/upload", (req, res) => {
     const { image, name, type, sessionId } = req.body;
     if (!image || !name || !type || !sessionId) return res.sendStatus(400);
 
-    try {
-        // Upload image to Cloudinary
-        const result = await cloudinary.uploader.upload(image, {
-            folder: `webcam-captures/${sessionId}`,
-            public_id: `${type}_${Date.now()}`,
-            resource_type: "image"
-        });
+    const base64Data = image.replace(/^data:image\/jpeg;base64,/, "");
+    const sessionFolder = path.join(__dirname, "uploads", sessionId);
 
-        // Save session info in memory
-        if (!sessions[sessionId]) {
-            sessions[sessionId] = {
-                userName: name,
-                timestamp: new Date().toLocaleString(),
-                accessed: false,
-                images: []
-            };
-        }
-        sessions[sessionId].images.push(result.secure_url);
+    if (!fs.existsSync(sessionFolder)) fs.mkdirSync(sessionFolder, { recursive: true });
 
-        res.sendStatus(200);
-    } catch (err) {
-        console.error("Cloudinary upload error:", err);
-        res.sendStatus(500);
+    const filename = `${type}_${Date.now()}.jpg`;
+    fs.writeFileSync(path.join(sessionFolder, filename), base64Data, "base64");
+
+    // Store in memory
+    if (!sessions[sessionId]) {
+        sessions[sessionId] = {
+            userName: name,
+            timestamp: new Date().toLocaleString(),
+            accessed: false,
+            images: []
+        };
     }
+    sessions[sessionId].images.push(filename);
+
+    res.sendStatus(200);
 });
 
 // Admin login page
@@ -98,23 +87,15 @@ app.get("/show-captures/:id", (req, res) => {
     const sessionData = sessions[id];
     if (!sessionData) return res.send("No data found");
 
-    res.render("show_captures", { userName: sessionData.userName, images: sessionData.images });
+    const images = sessionData.images.map(img => `/uploads/${id}/${img}`);
+    res.render("show_captures", { userName: sessionData.userName, images });
 });
 
-// Delete session (delete from Cloudinary too)
-app.delete("/delete-session/:id", async (req, res) => {
+// Delete session
+app.delete("/delete-session/:id", (req, res) => {
     const id = req.params.id;
     if (sessions[id]) {
-        try {
-            // Delete from Cloudinary
-            for (let imgUrl of sessions[id].images) {
-                const publicId = imgUrl.split("/").slice(-2).join("/").split(".")[0];
-                await cloudinary.uploader.destroy(publicId);
-            }
-        } catch (err) {
-            console.error("Cloudinary delete error:", err);
-        }
-
+        fs.rmSync(path.join(__dirname, "uploads", id), { recursive: true, force: true });
         delete sessions[id];
         return res.json({ success: true });
     }
