@@ -15,6 +15,9 @@ app.use(bodyParser.json({ limit: "10mb" }));
 app.set("view engine", "ejs");
 app.use(express.static("public"));
 
+// Serve uploaded images to browser
+app.use("/uploads", express.static(path.join(__dirname, "uploads")));
+
 // Home page
 app.get("/", (req, res) => res.render("index"));
 
