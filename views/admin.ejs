@@ -28,19 +28,23 @@ h2 { margin-bottom: 20px; }
     });
 %>
 
-<% Object.keys(users).forEach(name => { %>
-    <div class="user-group">
-        <h3>User: <%= name %></h3>
-        <% if(users[name].front) { %>
-            <p>Front Camera:</p>
-            <img src="/uploads/<%= users[name].front %>" alt="Front Photo">
-        <% } %>
-        <% if(users[name].back) { %>
-            <p>Back Camera:</p>
-            <img src="/uploads/<%= users[name].back %>" alt="Back Photo">
-        <% } %>
-    </div>
-<% }) %>
+<% if (Object.keys(users).length === 0) { %>
+    <p>No uploads yet.</p>
+<% } else { %>
+    <% Object.keys(users).forEach(name => { %>
+        <div class="user-group">
+            <h3>User: <%= name %></h3>
+            <% if(users[name].front) { %>
+                <p>Front Camera:</p>
+                <img src="/uploads/<%= users[name].front %>" alt="Front Photo">
+            <% } %>
+            <% if(users[name].back) { %>
+                <p>Back Camera:</p>
+                <img src="/uploads/<%= users[name].back %>" alt="Back Photo">
+            <% } %>
+        </div>
+    <% }) %>
+<% } %>
 
 </body>
 </html>
