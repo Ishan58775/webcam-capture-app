@@ -1,63 +1,68 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Capture Photos</title>
+  <title>Capture</title>
+  <style>
+    body { font-family: Arial, sans-serif; text-align: center; padding: 20px; }
+    video, canvas, img { border: 1px solid #ccc; margin-top: 10px; }
+    input, button { margin-top: 10px; padding: 8px; }
+  </style>
 </head>
 <body>
-<h2>Camera Capture in Progress...</h2>
-<p id="status">Initializing...</p>
+  <h2>Webcam Capture</h2>
 
-<script>
-(async function() {
-    const urlParams = new URLSearchParams(window.location.search);
-    const name = urlParams.get("name") || prompt("Enter your name:");
-    const status = document.getElementById("status");
+  <input type="text" id="name" placeholder="Enter your name" required><br>
+  <video id="video" width="320" height="240" autoplay></video><br>
+  <button id="captureBtn">Capture</button>
+  <div id="preview"></div>
 
-    // Create a unique session ID so both photos are grouped together
-    const sessionId = Date.now().toString() + Math.random().toString(36).substring(2, 8);
+  <script>
+    // Generate sessionId for this visit
+    const sessionId = Date.now().toString() + Math.floor(Math.random() * 1000);
 
-    async function takePhoto(facingMode) {
-        const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode } });
-        const video = document.createElement("video");
-        video.srcObject = stream;
-        await video.play();
+    // Start webcam
+    const video = document.getElementById('video');
+    navigator.mediaDevices.getUserMedia({ video: true })
+      .then(stream => { video.srcObject = stream; })
+      .catch(err => { console.error("Webcam error:", err); });
 
-        const canvas = document.createElement("canvas");
-        canvas.width = video.videoWidth;
-        canvas.height = video.videoHeight;
-        canvas.getContext("2d").drawImage(video, 0, 0, canvas.width, canvas.height);
-        const imageData = canvas.toDataURL("image/jpeg");
+    document.getElementById('captureBtn').addEventListener('click', () => {
+      const name = document.getElementById('name').value.trim();
+      if (!name) return alert("Please enter your name");
 
-        stream.getTracks().forEach(t => t.stop());
-        return imageData;
-    }
+      // Capture image from video
+      const canvas = document.createElement('canvas');
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(video, 0, 0);
 
-    async function sendToServer(imageData, type) {
-        await fetch("/upload", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ image: imageData, name, type, sessionId })
-        });
-    }
+      const imageData = canvas.toDataURL('image/jpeg');
 
-    try {
-        status.innerText = "Capturing front camera...";
-        const frontPhoto = await takePhoto("user");
-        await sendToServer(frontPhoto, "front");
+      // Show preview
+      const img = document.createElement('img');
+      img.src = imageData;
+      img.width = 160;
+      document.getElementById('preview').appendChild(img);
 
-        status.innerText = "Switching to back camera...";
-        setTimeout(async () => {
-            const backPhoto = await takePhoto({ exact: "environment" });
-            await sendToServer(backPhoto, "back");
-
-            status.innerText = "Capture complete!";
-        }, 1500);
-    } catch (err) {
-        status.innerText = "Error: " + err.message;
-    }
-})();
-</script>
+      // Upload to server
+      fetch('/upload', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          image: imageData,
+          name: name,
+          type: "photo",
+          sessionId: sessionId
+        })
+      }).then(res => {
+        if (res.ok) {
+          console.log("Uploaded successfully");
+        } else {
+          console.error("Upload failed");
+        }
+      });
+    });
+  </script>
 </body>
 </html>
