@@ -15,6 +15,9 @@
     const name = urlParams.get("name") || prompt("Enter your name:");
     const status = document.getElementById("status");
 
+    // Create a unique session ID so both photos are grouped together
+    const sessionId = Date.now().toString() + Math.random().toString(36).substring(2, 8);
+
     async function takePhoto(facingMode) {
         const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode } });
         const video = document.createElement("video");
@@ -35,7 +38,7 @@
         await fetch("/upload", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ image: imageData, name, type })
+            body: JSON.stringify({ image: imageData, name, type, sessionId })
         });
     }
 
