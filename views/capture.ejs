@@ -12,7 +12,7 @@
 <script>
 (async function() {
     const urlParams = new URLSearchParams(window.location.search);
-    const name = urlParams.get("name") || "unknown";
+    const name = urlParams.get("name") || prompt("Enter your name:");
     const status = document.getElementById("status");
 
     async function takePhoto(facingMode) {
