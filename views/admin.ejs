@@ -1,50 +1,47 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Admin Panel</title>
-<style>
-body { font-family: Arial, sans-serif; padding: 20px; background: #f9f9f9; }
-h2 { margin-bottom: 20px; }
-.user-group { margin-bottom: 30px; padding: 15px; background: #fff; border-radius: 8px; box-shadow: 0 0 5px #ccc; }
-.user-group h3 { margin-bottom: 10px; }
-.user-group img { width: 200px; margin-right: 10px; border: 1px solid #ddd; border-radius: 4px; }
-</style>
+  <title>Admin Panel</title>
+  <style>
+    body { font-family: Arial, sans-serif; padding: 20px; }
+    table { border-collapse: collapse; width: 100%; }
+    th, td { border: 1px solid #ddd; padding: 8px; text-align: center; }
+    th { background: #f7f7f7; }
+    img { max-width: 150px; border-radius: 4px; margin: 4px; }
+    .actions a, .actions button { margin: 0 4px; }
+  </style>
 </head>
 <body>
-<h2>Admin Panel - Uploaded Photos</h2>
+  <h1>Admin Panel</h1>
+  <table>
+    <tr>
+      <th>User</th>
+      <th>Timestamp</th>
+      <th>Status</th>
+      <th>Captures</th>
+      <th>Actions</th>
+    </tr>
+    <% Object.keys(sessions).forEach(id => { const s = sessions[id]; %>
+      <tr>
+        <td><%= s.userName %></td>
+        <td><%= s.timestamp %></td>
+        <td><%= s.accessed ? 'Used' : 'Unused' %></td>
+        <td><%= s.images.length %></td>
+        <td class="actions">
+          <a href="/show-captures/<%= id %>" target="_blank">View</a>
+          <button onclick="deleteSession('<%= id %>')">Delete</button>
+        </td>
+      </tr>
+    <% }); %>
+  </table>
 
-<% 
-    const users = {};
-    files.forEach(file => {
-        // filename format: Name_type_timestamp.jpg
-        const match = file.match(/^(.+)_(front|back)_\d+\.jpg$/);
-        if (match) {
-            const [_, name, type] = match;
-            if (!users[name]) users[name] = {};
-            users[name][type] = file;
-        }
-    });
-%>
-
-<% if (Object.keys(users).length === 0) { %>
-    <p>No uploads yet.</p>
-<% } else { %>
-    <% Object.keys(users).forEach(name => { %>
-        <div class="user-group">
-            <h3>User: <%= name %></h3>
-            <% if(users[name].front) { %>
-                <p>Front Camera:</p>
-                <img src="/uploads/<%= users[name].front %>" alt="Front Photo">
-            <% } %>
-            <% if(users[name].back) { %>
-                <p>Back Camera:</p>
-                <img src="/uploads/<%= users[name].back %>" alt="Back Photo">
-            <% } %>
-        </div>
-    <% }) %>
-<% } %>
-
+  <script>
+    function deleteSession(id) {
+      if (confirm('Delete this session and all images?')) {
+        fetch(`/delete-session/${id}`, { method: 'DELETE' })
+          .then(r => r.json()).then(j => { if (j.success) location.reload(); else alert('Failed'); });
+      }
+    }
+  </script>
 </body>
 </html>
