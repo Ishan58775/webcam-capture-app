@@ -43,14 +43,15 @@ app.post("/upload", (req, res) => {
     fs.writeFileSync(path.join(sessionFolder, filename), base64Data, "base64");
 
     // Store in memory
-    if (!sessions[sessionId]) {
-        sessions[sessionId] = {
-            userName: name,
-            timestamp: new Date().toLocaleString(),
-            accessed: false,
-            images: []
-        };
-    }
+if (!sessions[sessionId]) {
+    sessions[sessionId] = {
+        userName: name, // <-- use the name from front-end
+        timestamp: new Date().toLocaleString("en-IN", { timeZone: "Asia/Kolkata" }),
+        accessed: false,
+        images: []
+    };
+}
+
     sessions[sessionId].images.push(filename);
 
     res.sendStatus(200);
