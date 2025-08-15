@@ -5,9 +5,9 @@
   <style>
     body { font-family: Arial, sans-serif; padding: 20px; }
     table { border-collapse: collapse; width: 100%; }
-    th, td { border: 1px solid #ddd; padding: 8px; text-align: center; }
+    th, td { border: 1px solid #ddd; padding: 8px; text-align: center; vertical-align: middle; }
     th { background: #f7f7f7; }
-    img { max-width: 150px; border-radius: 4px; margin: 4px; }
+    img { max-width: 100px; border-radius: 4px; margin: 4px; }
     .actions a, .actions button { margin: 0 4px; }
   </style>
 </head>
@@ -18,15 +18,21 @@
       <th>User</th>
       <th>Timestamp</th>
       <th>Status</th>
-      <th>Captures</th>
+      <th>Images</th>
       <th>Actions</th>
     </tr>
-    <% Object.keys(sessions).forEach(id => { const s = sessions[id]; %>
+    <% Object.keys(sessions).forEach(id => { 
+         const s = sessions[id]; 
+    %>
       <tr>
         <td><%= s.userName %></td>
         <td><%= s.timestamp %></td>
         <td><%= s.accessed ? 'Used' : 'Unused' %></td>
-        <td><%= s.images.length %></td>
+        <td>
+          <% s.images.forEach(img => { %>
+            <img src="/uploads/<%= id %>/<%= img %>" alt="capture" />
+          <% }); %>
+        </td>
         <td class="actions">
           <a href="/show-captures/<%= id %>" target="_blank">View</a>
           <button onclick="deleteSession('<%= id %>')">Delete</button>
@@ -39,7 +45,8 @@
     function deleteSession(id) {
       if (confirm('Delete this session and all images?')) {
         fetch(`/delete-session/${id}`, { method: 'DELETE' })
-          .then(r => r.json()).then(j => { if (j.success) location.reload(); else alert('Failed'); });
+          .then(r => r.json())
+          .then(j => { if (j.success) location.reload(); else alert('Failed'); });
       }
     }
   </script>
