@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Captures - <%= userName %></title>
+  <style>
+    body { font-family: Arial, sans-serif; padding: 20px; }
+    h2 { margin-bottom: 10px; }
+    img { max-width: 300px; margin: 10px; border: 1px solid #ddd; border-radius: 4px; }
+  </style>
+</head>
+<body>
+  <h2>Captures for: <%= userName %></h2>
+  <div>
+    <% images.forEach(img => { %>
+      <img src="<%= img %>" alt="Capture">
+    <% }) %>
+  </div>
+</body>
+</html>
