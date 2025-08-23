@@ -1,6 +1,7 @@
 {
   "name": "webcam-capture-app",
   "version": "1.0.0",
+  "description": "Webcam capture app with Cloudinary storage",
   "main": "server.js",
   "type": "commonjs",
   "engines": {
@@ -11,12 +12,13 @@
   },
   "dependencies": {
     "body-parser": "^1.20.2",
-    "cloudinary": "^1.41.1",
+    "cloudinary": "^1.41.3",
     "dotenv": "^16.4.5",
     "ejs": "^3.1.10",
     "express": "^4.19.2",
     "express-session": "^1.17.3",
     "multer": "^1.4.5-lts.2",
+    "multer-storage-cloudinary": "^4.0.0",
     "uuid": "^9.0.1"
   }
 }
